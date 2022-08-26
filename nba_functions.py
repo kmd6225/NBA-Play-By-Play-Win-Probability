@@ -32,7 +32,7 @@ def get_team_games(team_name, year):
 	return(game1)
 
 
-def get_scores():
+def get_scores(game1):
 
 	#converts None values to 0 if no baskets have been scored yet. Otherwise, converts None values to the current score
 
@@ -82,7 +82,7 @@ def get_scores():
 	return(game1)
 
 
-def get_winner():
+def get_winner(game1):
 
 	#determine if the home team wins and populate a list with an indicator 
 
@@ -123,7 +123,7 @@ def get_winner():
 
 
 
-def get_train_test_split():
+def get_train_test_split(gamefinal):
 
 	#append a boolean to list indicating if a specific game id is in train.
 
