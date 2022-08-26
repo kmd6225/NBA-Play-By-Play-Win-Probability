@@ -14,9 +14,9 @@ game1 = get_team_games('Boston Celtics', '2021')
 
 game1 = get_scores(game1)
 
-gamefinal, game1_2 = get_winner(game1)
+gamefinal, game1_2, train_ids = get_winner(game1)
 
-X_train, X_test, y_train, y_test = get_train_test_split(gamefinal)
+X_train, X_test, y_train, y_test = get_train_test_split(gamefinal, train_ids)
 
 
 clf = LogisticRegression(max_iter = 500)

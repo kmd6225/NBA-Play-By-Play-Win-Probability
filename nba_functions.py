@@ -119,11 +119,11 @@ def get_winner(game1):
 	gamefinal = game1_2.iloc[0:len(game1_2), [0,4,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27]]
 
 
-	return(gamefinal,game1_2)
+	return(gamefinal,game1_2, train_ids)
 
 
 
-def get_train_test_split(gamefinal):
+def get_train_test_split(gamefinal, train_ids):
 
 	#append a boolean to list indicating if a specific game id is in train.
 
