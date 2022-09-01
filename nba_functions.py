@@ -1,16 +1,25 @@
+dfrom nba_api.stats.endpoints import playbyplayv2
+from nba_api.stats.endpoints import teamgamelog
+from nba_api.stats.static import teams
+from nba_api.stats.endpoints import teamestimatedmetrics
+import pandas as pd
+from nba_api.stats.endpoints import boxscoresummaryv2 
+import numpy as np
+import random
+
 def get_team_games(team_name, year):
 
 	#get team id
 
-	teams = teams.get_teams()
-	team = [x for x in teams if x['full_name'] == team_name][0]
+	teams_ = teams.get_teams()
+	team = [x for x in teams_ if x['full_name'] == team_name][0]
 	team_id = team['id']
 
 
 
 	#get dataframe of games that the team played in during specified season
 
-	bos_games = teamgamelog.TeamGameLog(team_id = team_id, season = year).get_data_frames()[0]
+	team_games = teamgamelog.TeamGameLog(team_id = team_id, season = year).get_data_frames()[0]
 
 
 
@@ -21,7 +30,7 @@ def get_team_games(team_name, year):
 	#get play by play data for first 14 games played by specified team
 
 	game_plays = playbyplayv2.PlayByPlayV2(end_period = 4, start_period = 1, game_id = team_game_ids[0]).get_data_frames()[0]
-	for i in list(np.linspace(1,14,num = 14, dtype = int)):
+	for i in list(np.linspace(1,30,num = 30, dtype = int)):
 	    df1 = playbyplayv2.PlayByPlayV2(end_period = 4, start_period = 1, game_id = team_game_ids[i]).get_data_frames()[0]
 	    game_plays = pd.concat([game_plays,df1], axis = 0)
 
@@ -116,16 +125,59 @@ def get_winner(game1):
 
 	#save new dataframe with desired columns
 
-	gamefinal = game1_2.iloc[0:len(game1_2), [0,4,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27]]
+	gamefinal = game1_2.iloc[0:len(game1_2), [0,4,6,7,8,9,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27]]
 
 
 	return(gamefinal,game1_2, train_ids)
 
 
+def get_time(gamefinal):
+    timedf = gamefinal['PCTIMESTRING'].str.split(':', expand = True)
+    timedf.columns = ['Minutes', 'Seconds']
+
+    for i in range(len(timedf)):
+        timedf.iloc[i,0] = int(timedf.iloc[i,0])
+        timedf.iloc[i,1] = int(timedf.iloc[i,1])
+
+    gamefinal['Minutes'] = timedf['Minutes'].tolist()
+    gamefinal['Seconds'] = timedf['Seconds'].tolist()
+
+    return(gamefinal)
+
+def get_metrics(gamefinal):
+    metrics = teamestimatedmetrics.TeamEstimatedMetrics(league_id = '00',season = '2021-22',season_type  = 'Regular Season').get_data_frames()[0].iloc[0:31,[1,9]]
+    home_metrics = metrics.copy()
+    away_metrics = metrics.copy() 
+
+    home_metrics = home_metrics.rename(columns = {'TEAM_ID': 'HOME_TEAM_ID', 'E_NET_RATING': 'HOME_E_NET_RATING'})
+    away_metrics = away_metrics.rename(columns = {'TEAM_ID': 'VISITOR_TEAM_ID', 'E_NET_RATING': 'VISITOR_E_NET_RATING'})
+
+    gameids = gamefinal['GAME_ID'].unique().tolist()
+
+    home_visitor = boxscoresummaryv2.BoxScoreSummaryV2(gameids[0]).get_data_frames()[0][['GAME_ID', 'HOME_TEAM_ID','VISITOR_TEAM_ID']]
+    for i in np.linspace(1,30,num = 30, dtype = int) :
+        temp = boxscoresummaryv2.BoxScoreSummaryV2(gameids[i]).get_data_frames()[0]
+        home_visitor = pd.concat([home_visitor, temp[['GAME_ID', 'HOME_TEAM_ID','VISITOR_TEAM_ID']]], axis = 0)
+
+    gamefinal = gamefinal.merge(home_visitor, on = 'GAME_ID')
+    gamefinal = gamefinal.merge(home_metrics, on = 'HOME_TEAM_ID')
+    gamefinal = gamefinal.merge(away_metrics, on = 'VISITOR_TEAM_ID')
+
+    gamefinal = gamefinal.drop('HOME_TEAM_ID', axis = 1)
+    gamefinal = gamefinal.drop('VISITOR_TEAM_ID', axis = 1)
+
+    return(gamefinal)
+
+
+
+
+
+
+
+    
 
 def get_train_test_split(gamefinal, train_ids):
-
-	#append a boolean to list indicating if a specific game id is in train.
+    #append a boolean to list indicating if a specific game id is in train.
 
 	istrain = []
 	for i in range(len(gamefinal)):
@@ -170,16 +222,14 @@ def get_train_test_split(gamefinal, train_ids):
 
 	#drop game_id since it isn't a predictor
 
-	X_train = X_train.drop('GAME_ID', axis = 1)
-	X_test = X_test.drop('GAME_ID', axis = 1)
-
-	return(X_train, X_test, y_train, y_test)
-
+	X_train = X_train.drop(['GAME_ID','HOMEDESCRIPTION','NEUTRALDESCRIPTION','VISITORDESCRIPTION','PCTIMESTRING'], axis = 1)
+	X_test = X_test.drop(['GAME_ID','HOMEDESCRIPTION','NEUTRALDESCRIPTION','VISITORDESCRIPTION','PCTIMESTRING'], axis = 1)
+ 
 
 
 
 
 
-
+	return(X_train, X_test, y_train, y_test, istest)
 
 
